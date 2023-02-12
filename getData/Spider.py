@@ -116,12 +116,6 @@ class SpiderMain(object):
             mail = mail,  # 邮箱
             tel = tel,  # 电话
         )
-        # for tag in class_a_tags:
-        #     link_tags = tag.select('a')
-        #     for link_tag in link_tags:
-        #         print(root+link_tag['href'])
-        #         teacherUrls.append(root+link_tag['href'])
-        # return teacherUrls
         return teacher
 
 def craw():
