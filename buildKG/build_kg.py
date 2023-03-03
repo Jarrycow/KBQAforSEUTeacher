@@ -30,33 +30,17 @@ class MedicalExtractor(object):
             user="neo4j",
             password="000614")
 
-        # 共10类节点
+        # 定义节点
         self.teacher = []  # 姓名
-        # self.age = []  # 年龄
-        # self.gender = []  # 性别
         self.college = []  # 学院
-        self.title = []  # 职称
-        # self.background = []  # 教育背景
         self.direction = []  # 研究方向
-        # self.award = []  # 奖项
-        # self.mail = []  # 邮箱
-        # self.tel = []  # 电话
 
         self.teacher_infos = []  # 教师信息（有属性）
 
         # 构建节点实体关系
         self.rels_name_college = []  # 所属学院
-        self.rels_college_teacher = []  # 学院有哪些教师
         self.rels_name_title = []  # 教师职称
-        self.rels_title_teacher = []  # 职称包含教师
-        self.rels_name_background = []  # 教育背景
         self.rels_name_direction = []  # 研究方向
-        self.rels_name_award = []  # 奖项
-        self.rels_name_mail = []  # 邮箱
-        self.rels_name_tel = []  # 电话
-        
-
-        
         
     def extract_triples(self,data_path):  # 从json文件中转换抽取三元组
         print("从json文件中转换抽取三元组")
@@ -70,11 +54,7 @@ class MedicalExtractor(object):
                 teachers_dict['name'] = teacher
                 
                 self.teacher.append(teacher)
-                # teachers_dict['name'] = ""  # 姓名
-                # teachers_dict['age'] = ""  # 年龄
                 teachers_dict['gender'] = ""  # 性别
-                # teachers_dict['college'] = ""  # 学院
-                # teachers_dict['title'] = ""  # 职称
                 teachers_dict['des'] = ""  # 简介
                 teachers_dict['background'] = ""  # 教育背景
                 teachers_dict['direction'] = ""  # 研究方向
@@ -82,6 +62,7 @@ class MedicalExtractor(object):
                 teachers_dict['mail'] = ""  # 邮箱
                 teachers_dict['tel'] = ""  # 电话
 
+                # 
                 if 'gender' in data_json:  # json 中有性别
                     teachers_dict['gender'] = data_json['gender']
                 
@@ -133,14 +114,6 @@ class MedicalExtractor(object):
             if node in self.teacher:
                 teacher = self.teacher_infos[self.teacher.index(node)]
                 cql = self.set_teacher_attribute(teacher, entity_type)
-                # name = teacher['name']
-                # label = entity_type
-                # gender = '男'
-                # cql = "MERGE(n:" + label + "{"
-                # cql += ("name:" + "'" + name + "'") 
-                # cql += ",gender:" + "'" + gender + "'"
-                # cql += "})"
-                # temp = cql
             else:
                 cql = """MERGE(n:{label}{{name:'{entity_name}'}})""".format(
                     label=entity_type,entity_name=node.replace("'",""))
@@ -188,7 +161,7 @@ class MedicalExtractor(object):
         cql = "MERGE(n:" + label + "{"
         cql += ("name:" + "'" + teacher['name'] + "'")
         for key in teacher.keys():
-            print(key, teacher[key])
+            # print(key, teacher[key])
             
             if(teacher[key] != '' and key != 'name'):
                 cql += "," + key + ":" + "'" + teacher[key] + "'"
@@ -203,22 +176,13 @@ class MedicalExtractor(object):
 
     def create_relations(self):  # 创建关系
         self.write_edges(self.rels_name_title, '教师', '职称')
-        # self.write_edges(self.rels_title_teacher, '职称', '教师')
         self.write_edges(self.rels_name_college, '教师', '学院')
         self.write_edges(self.rels_name_direction, '教师', '研究方向')
 
     def set_teachers_attributes(self): 
-        # self.set_attributes(self.disease_infos,"疾病")
         t=threading.Thread(target=self.set_attributes,args=(self.teacher_infos,"教师"))
         t.setDaemon(False)
         t.start()
-
-
-    # def export_data(self,data,path):  # 将数据导出为json
-    #     if isinstance(data[0],str):
-    #         data = sorted([d.strip("...") for d in set(data)])
-    #     with codecs.open(path, 'w', encoding='utf-8') as f:
-    #         json.dump(data, f, indent=4, ensure_ascii=False)
 
     def export_entitys_relations(self):
         self.export_data(self.teacher, './data/teacher.json')
