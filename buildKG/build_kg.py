@@ -21,9 +21,9 @@ def print_data_info(data_path):  # 打印数据形式
                 break
     return triples
 
-class MedicalExtractor(object):
+class TeacherExtractor(object):
     def __init__(self):
-        super(MedicalExtractor, self).__init__()
+        super(TeacherExtractor, self).__init__()
         self.graph = Graph(  # neo4j 链接服务
             host="127.0.0.1",
             http_port=7474,
@@ -34,6 +34,7 @@ class MedicalExtractor(object):
         self.teacher = []  # 姓名
         self.college = []  # 学院
         self.direction = []  # 研究方向
+        self.title = []
 
         self.teacher_infos = []  # 教师信息（有属性）
 
@@ -41,6 +42,12 @@ class MedicalExtractor(object):
         self.rels_name_college = []  # 所属学院
         self.rels_name_title = []  # 教师职称
         self.rels_name_direction = []  # 研究方向
+
+        # 定义关键词
+        self.nameFiles = set()
+        self.collegeFiles = set()
+        self.titleFiles = set()
+        self.directionFiles = set()
         
     def extract_triples(self,data_path):  # 从json文件中转换抽取三元组
         print("从json文件中转换抽取三元组")
@@ -62,7 +69,10 @@ class MedicalExtractor(object):
                 teachers_dict['mail'] = ""  # 邮箱
                 teachers_dict['tel'] = ""  # 电话
 
-                # 
+                # 写入属性
+                if 'name' in data_json:  # json 中有姓名
+                    self.nameFiles.add(data_json['name'])
+
                 if 'gender' in data_json:  # json 中有性别
                     teachers_dict['gender'] = data_json['gender']
                 
@@ -71,11 +81,13 @@ class MedicalExtractor(object):
                     for college in colleges:
                         self.college.append(college)
                         self.rels_name_college.append([teacher, 'belong_College', college])
+                        self.collegeFiles.add(college)
                                   
                 if 'title' in data_json:  # 所属职称
                     title = data_json['title']
                     self.title.append(title)
                     self.rels_name_title.append([teacher, 'be_title_for', title])
+                    self.titleFiles.add(title)
 
                 if 'des' in data_json:  # 个人简介
                     teachers_dict['des'] = data_json['des']
@@ -90,12 +102,14 @@ class MedicalExtractor(object):
                     directions = directions.replace('；',',')
                     directions = directions.replace(';',',')
                     directions = directions.replace('\n',',')
+                    directions = directions.replace(' ', '')
                     directions = directions.split(',')
                     for direction in directions:
                         if direction == '':
                             continue
                         self.direction.append(direction)
                         self.rels_name_direction.append([teacher, 'be_dir_for', direction])
+                        self.directionFiles.add(direction)
 
                 if 'award' in data_json:  # 奖项属性
                     teachers_dict['award'] = data_json['award']
@@ -103,8 +117,8 @@ class MedicalExtractor(object):
                 if 'mail' in data_json:  # 邮箱属性
                     teachers_dict['mail'] = data_json['mail']
 
-                if 'tel' in data_json:  # 电话属性
-                    teachers_dict['tel'] = data_json['tel']
+                if 'Tel' in data_json:  # 电话属性
+                    teachers_dict['tel'] = data_json['Tel']
 
                 self.teacher_infos.append(teachers_dict)
 
@@ -185,20 +199,30 @@ class MedicalExtractor(object):
         t.start()
 
     def export_entitys_relations(self):
-        self.export_data(self.teacher, './data/teacher.json')
-        self.export_data(self.college, './data/college.json')
-        self.export_data(self.title, './data/title.json')
-        
-        self.export_data(self.rels_name_college, './data/rels_name_college.json')
+        # self.export_data(self.teacher, './data/teacher.json')
+        # self.export_data(self.college, './data/college.json')
+        # self.export_data(self.title, './data/title.json')
 
+        # self.export_data(self.rels_name_college, './data/rels_name_college.json')
+
+        self.write_attributes_files(self.nameFiles, 'teacher')
+        self.write_attributes_files(self.collegeFiles, 'college')
+        self.write_attributes_files(self.titleFiles, 'title')
+        self.write_attributes_files(self.directionFiles, 'direction')
+
+    def write_attributes_files(self, entitys, filename): # 关键词写入文件
+        file_path = 'data/dict/' + filename + '.txt'
+        fileEntitys = ''.join([i + '\n' for i in entitys])[:-1]
+        with open(file_path, 'w', encoding='utf-8') as file:
+            file.write(fileEntitys)
 
 if __name__ == '__main__':
     path = "./data/teachers.json"
     # print_data_info(path)
-    extractor = MedicalExtractor()  # 构造 eno4j 类
+    extractor = TeacherExtractor()  # 构造 eno4j 类
     extractor.extract_triples(path)  # 从json文件中转换抽取三元组
     extractor.create_entitys()
     extractor.create_relations()
     extractor.set_teachers_attributes()
-    # extractor.export_entitys_relations()
+    extractor.export_entitys_relations()
     pass

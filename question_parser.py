@@ -21,10 +21,25 @@ class QuestionPaser:
 
 
             sql = []
-            if question_type == 'teacher_college':
+            if question_type == 'teacher_describe':
+                sql = self.sql_transfer(question_type, entity_dict.get('teacher'))
+            elif question_type == 'teacher_college':
                 sql = self.sql_transfer(question_type, entity_dict.get('teacher'))
             elif question_type == 'teacher_award':
                 sql = self.sql_transfer(question_type, entity_dict.get('teacher'))
+            elif question_type == 'teacher_title':
+                sql = self.sql_transfer(question_type, entity_dict.get('teacher'))
+            elif question_type == 'teacher_direction':
+                sql = self.sql_transfer(question_type, entity_dict.get('teacher'))
+            elif question_type == 'teacher_mail':
+                sql = self.sql_transfer(question_type, entity_dict.get('teacher'))
+            elif question_type == 'teacher_tel':
+                sql = self.sql_transfer(question_type, entity_dict.get('teacher'))
+            elif question_type == 'teacher_gender':
+                sql = self.sql_transfer(question_type, entity_dict.get('teacher'))
+            elif question_type == 'teacher_background':
+                sql = self.sql_transfer(question_type, entity_dict.get('teacher'))
+
 
             if sql:
                 _sql['sql'] = sql
@@ -38,15 +53,31 @@ class QuestionPaser:
         # 查询语句
         sql = []
 
-        # 查询学院
-        if question_type == 'teacher_college':
-            sql = ["MATCH (m:teacher) where m.name = '{0}' return m.name, m.college".format(i) for i in entities]
         
-        elif question_type == 'teacher_background':
-            sql = ["MATCH (m:`教师`) where m.name = '{0}' return m.name, m.college".format(i) for i in entities]
+        if question_type == 'teacher_describe':  # 查询简介
+            sql = ["MATCH (m:`教师`) where m.name = '{0}' return m.des".format(i) for i in entities]
+
+        elif question_type == 'teacher_gender':  # 查询性别
+            sql = ["MATCH (m:`教师`) where m.name = '{0}' return m.gender".format(i) for i in entities]
+
+        elif question_type == 'teacher_college':  # 查询学院
+            sql = ["MATCH(m:`教师`)-[r:belong_College]->(c:`学院`) WHERE m.name = '{0}' return c.name".format(i) for i in entities]
         
-        elif question_type == 'teacher_award':
-            sql = ["MATCH (m:`教师`) where m.name = '程光' return m.award".format(i) for i in entities]
-            
-        print(sql)
+        elif question_type == 'teacher_direction':  # 查询研究方向
+            sql = ["MATCH(m:`教师`)-[r:be_dir_for]->(d:`研究方向`) WHERE m.name = '{0}' return d.name".format(i) for i in entities]
+
+        elif question_type == 'teacher_title':  # 查询职称
+            sql = ["MATCH(m:`教师`)-[r:be_title_for]->(t:`职称`) WHERE m.name = '{0}' return t.name".format(i) for i in entities]
+
+        elif question_type == 'teacher_background':  # 学术背景
+            sql = ["MATCH (m:`教师`) where m.name = '{0}' return m.background".format(i) for i in entities]
+        
+        elif question_type == 'teacher_award':  # 奖项
+            sql = ["MATCH (m:`教师`) where m.name = '{0}' return m.award".format(i) for i in entities]
+        elif question_type == 'teacher_mail':  # 邮箱
+            sql = ["MATCH (m:`教师`) where m.name = '{0}' return m.mail".format(i) for i in entities]
+        elif question_type == 'teacher_tel':  # 电话
+            sql = ["MATCH (m:`教师`) where m.name = '{0}' return m.tel".format(i) for i in entities]
+        else:
+            sql = ["MATCH (m:`教师`) where m.name = '{0}' return m.des".format(i) for i in entities]
         return sql

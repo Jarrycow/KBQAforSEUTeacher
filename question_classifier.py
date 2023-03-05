@@ -1,11 +1,8 @@
-#!/usr/bin/env python3
-# coding: utf-8
-# File: question_classifier.py
-# Author: lhy<lhy_in_blcu@126.com,https://huangyong.github.io>
-# Date: 18-10-4
-
 import os
+import re
 import ahocorasick
+
+
 
 class QuestionClassifier:
     def __init__(self):
@@ -29,14 +26,16 @@ class QuestionClassifier:
         # 构建词典
         self.wdtype_dict = self.build_wdtype_dict()
         # 问句疑问句
-        self.college_qwd = ['学院', '院系', '专业']  # 所属学院
+        self.college_qwd = ['学院', '院系', '专业', '院的']  # 所属学院
         self.title_qwd = ['职称', '教授']  # 所属职称
-        self.background_qwd = ['学术背景', '毕业于']  # 学术背景
-        self.direction_qwd = ['研究方向', '研究内容']  # 研究方向
-        self.award_qwd = ['奖项', '荣誉']  # 奖项
+        self.gender_qwd = ['性别', '男', '女']  # 性别
+        self.background_qwd = ['学术背景', '毕业于', '就读于', '学历']  # 学术背景
+        self.direction_qwd = ['研究方向', '研究内容', '研究', '专攻']  # 研究方向
+        self.award_qwd = ['奖', '荣誉']  # 奖项
         self.email_qwd = ['邮箱', '联系方式', '联络方式', 'email', 'e-mail']  # 邮箱
         self.tel_qwd = ['电话', '联系方式', '联络方式', 'tel']  # 电话
-        print('model init finished ......')
+        self.des_qwd = ['介绍', '简介', '如何']
+        self.www_qwd = ['哪些']
 
     def build_wdtype_dict(self):  # 构造词对应的类型
         wd_dict = dict()
@@ -67,8 +66,8 @@ class QuestionClassifier:
             if 'teacher_dict' in globals():  # 判断是否为首次作用
                 pass
             else:
-                return {}
-        print("medical_dict:", teacher_dict)
+                teacher_dict = globals()['teachers_dict']
+        # print("medical_dict:", teacher_dict)
         data['args'] = teacher_dict
         # 收集问句涉及实体类型
         types = []  # 实体类型
@@ -77,13 +76,23 @@ class QuestionClassifier:
         
         question_types = []  # 问句类型
 
+        # 描述
+        if self.check_words(self.des_qwd, question) and ('teacher' in types):
+            question_type = 'teacher_describe'
+            question_types.append(question_type)
+
+        # 性别
+        if self.check_words(self.gender_qwd, question) and ('teacher' in types):
+            question_type = 'teacher_gender'
+            question_types.append(question_type)
+
         # 学院
         if self.check_words(self.college_qwd, question) and ('teacher' in types):
             question_type = 'teacher_college'
             question_types.append(question_type)
         
         # 学术背景
-        if self.check_words(self.direction_qwd, question) and ('teacher' in types):
+        if self.check_words(self.background_qwd, question) and ('teacher' in types):
             question_type = 'teacher_background'
             question_types.append(question_type)
         
@@ -91,6 +100,46 @@ class QuestionClassifier:
         if self.check_words(self.award_qwd, question) and ('teacher' in types):
             question_type = 'teacher_award'
             question_types.append(question_type)
+
+        # 职称
+        if self.check_words(self.title_qwd, question) and ('teacher' in types):
+            question_type = 'teacher_title'
+            question_types.append(question_type)
+
+        # 研究方向
+        if self.check_words(self.direction_qwd, question) and ('teacher' in types):
+            question_type = 'teacher_direction'
+            question_types.append(question_type)
+
+        # 邮箱
+        if self.check_words(self.email_qwd, question) and ('teacher' in types):  
+            question_type = 'teacher_mail'
+            question_types.append(question_type)
+        
+        # 电话
+        if self.check_words(self.tel_qwd, question) and ('teacher' in types):
+            question_type = 'teacher_tel'
+            question_types.append(question_type)
+        
+        # 哪些
+        if self.check_words(self.www_qwd, question) and ('teacher' not in types):
+            question_type = 'teacher_search'
+            if(self.check_words(self.direction_qwd, question)):
+                question_type += 'direction'
+            if(self.check_words(self.college_qwd, question)):
+                question_type += 'college'
+            if(self.check_words(self.title_qwd, question)):
+                question_type += 'title'
+            question_types.append(question_type)
+
+        # 没有类型
+        if question_types == []:  
+            teachersEntity = '和'.join([i for i in teacher_dict.keys()])
+            try:
+                question_types.append(self.compareSiliarity(teachersEntity, question))
+            except:
+                if question_types == []:
+                    question_types.append('teacher_describe')
         
         # 将多个分类结果进行合并处理，组装成一个字典
         data['question_types'] = question_types
@@ -111,11 +160,13 @@ class QuestionClassifier:
         global teachers_dict
         if final_dict:
             teachers_dict = final_dict
-        print("final_dict : ",final_dict)
+        # print("final_dict : ",final_dict)
         if 'teachers_dict' in globals():
-            print("teachers_dict : ",teachers_dict)
+            # print("teachers_dict : ",teachers_dict)
+            pass
         else:
-            print("teachers_dict does not exist.")
+            pass
+            # print("teachers_dict does not exist.")
         return final_dict
     
     def check_words(self, wds, question):  # 基于特征词进行分类
@@ -123,3 +174,88 @@ class QuestionClassifier:
             if wd in question:
                 return True
         return False
+
+    def sentenceSplit(self, sent):
+        sentences = re.split(r'[;；,，。\.]\s*',sent)
+        return sentences
+    
+    def compareSiliarity(teachersEntity, question):
+        from question_similarity import vector_similarity
+        if teachersEntity not in question:  # 没有主语
+            question = teachersEntity + question
+        exSentences = [
+            teachersEntity + '属于哪个学院？', 
+            teachersEntity + '的学院是？', 
+            teachersEntity + '属于哪个院系？', 
+            teachersEntity + '的院系是？', 
+            teachersEntity + '属于哪个专业？', 
+            teachersEntity + '的专业是？', 
+            teachersEntity + '是哪个院的？', 
+            teachersEntity + '是哪个院系的？', 
+            teachersEntity + '是哪个专业的？', 
+            teachersEntity + '是哪个学院的？', 
+            teachersEntity + '的职称是？', 
+            teachersEntity + '性别是？', 
+            teachersEntity + '是男的吗？', 
+            teachersEntity + '是女的吗？', 
+            teachersEntity + '的学术背景是？', 
+            teachersEntity + '毕业于？', 
+            teachersEntity + '就读于？', 
+            teachersEntity + '学历？', 
+            teachersEntity + '研究方向是？', 
+            teachersEntity + '研究内容是？', 
+            teachersEntity + '专攻于？', 
+            teachersEntity + '得过什么奖？', 
+            teachersEntity + '获得什么荣誉？', 
+            teachersEntity + '的邮箱是？', 
+            teachersEntity + '的联系方式是？', 
+            teachersEntity + '的联络方式是？', 
+            teachersEntity + '的email', 
+            teachersEntity + '电话是？', 
+            teachersEntity + 'tel是', 
+            teachersEntity + '如何联系？', 
+            teachersEntity + '介绍一下', 
+            teachersEntity + '的简介', 
+            teachersEntity + '如何'
+        ]
+        dictSentences = {
+            teachersEntity + '属于哪个学院？': 'teacher_college', 
+            teachersEntity + '的学院是？': 'teacher_college', 
+            teachersEntity + '属于哪个院系？': 'teacher_college', 
+            teachersEntity + '的院系是？': 'teacher_college', 
+            teachersEntity + '属于哪个专业？': 'teacher_college', 
+            teachersEntity + '的专业是？': 'teacher_college', 
+            teachersEntity + '是哪个院的？': 'teacher_college', 
+            teachersEntity + '是哪个院系的？': 'teacher_college', 
+            teachersEntity + '是哪个专业的？': 'teacher_college', 
+            teachersEntity + '是哪个学院的？': 'teacher_college', 
+            teachersEntity + '的职称是？': 'teacher_title', 
+            teachersEntity + '性别是？': 'teacher_gender', 
+            teachersEntity + '是男的吗？': 'teacher_gender', 
+            teachersEntity + '是女的吗？': 'teacher_gender', 
+            teachersEntity + '的学术背景是？': 'teacher_background', 
+            teachersEntity + '毕业于？': 'teacher_background', 
+            teachersEntity + '就读于？': 'teacher_background', 
+            teachersEntity + '学历？': 'teacher_background', 
+            teachersEntity + '研究方向是？': 'teacher_direction', 
+            teachersEntity + '研究内容是？': 'teacher_direction', 
+            teachersEntity + '专攻于？': 'teacher_direction', 
+            teachersEntity + '得过什么奖？': 'teacher_award', 
+            teachersEntity + '获得什么荣誉？': 'teacher_award', 
+            teachersEntity + '的邮箱是？': 'teacher_mail', 
+            teachersEntity + '的联系方式是？': 'teacher_mail', 
+            teachersEntity + '的联络方式是？': 'teacher_mail', 
+            teachersEntity + '的email': 'teacher_mail', 
+            teachersEntity + '电话是？': 'teacher_tel', 
+            teachersEntity + 'tel是': 'teacher_tel', 
+            teachersEntity + '如何联系？': 'teacher_tel', 
+            teachersEntity + '介绍一下': 'teacher_describe', 
+            teachersEntity + '的简介': 'teacher_describe', 
+            teachersEntity + '如何': 'teacher_describe'
+        }
+        lisSimilarity = [vector_similarity(question, i) for i in exSentences] 
+        if max(lisSimilarity) < 0.3:
+            return []
+        else:
+            return dictSentences[lisSimilarity.find(max(lisSimilarity))]
+        
